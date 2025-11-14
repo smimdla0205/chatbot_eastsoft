@@ -1,0 +1,188 @@
+service: qa-chatbot-bedrock
+
+provider:
+  name: aws
+  runtime: python3.11
+  region: ap-northeast-1
+  stage: prod
+  environment:
+    BEDROCK_REGION: ap-northeast-1
+    BEDROCK_MODEL_ID: anthropic.claude-3-sonnet-20240229-v1:0
+    DYNAMODB_TABLE: qa-documents
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - logs:CreateLogGroup
+        - logs:CreateLogStream
+        - logs:PutLogEvents
+        - bedrock:InvokeModel
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:Query
+      Resource: 
+        - "*"
+
+functions:
+  ask:
+    handler: lambda/index.handler
+    timeout: 60
+    memorySize: 1024
+    description: "Q&A Bedrock 챗봇 - DynamoDB 통합"
+    events:
+      - http:
+          path: ask
+          method: post
+          cors: true
+
+plugins:
+  - serverless-python-requirements
+
+# S3 + CloudFront 설정
+resources:
+  Resources:
+    ChatbotBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: qa-chatbot-${self:provider.stage}-${aws:accountId}
+        VersioningConfiguration:
+          Status: Enabled
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          BlockPublicPolicy: true
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: true
+    
+    BucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket:
+          Ref: ChatbotBucket
+        PolicyText:
+          Statement:
+            - Principal:
+                Service: cloudfront.amazonaws.com
+              Action: s3:GetObject
+              Effect: Allow
+              Resource: !Sub "${ChatbotBucket.Arn}/*"
+              Condition:
+                StringEquals:
+                  AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
+    
+    CloudFrontDistribution:
+      Type: AWS::CloudFront::Distribution
+      Properties:
+        DistributionConfig:
+          Enabled: true
+          HttpVersion: http2and3
+          DefaultRootObject: index.html
+          
+          Origins:
+            - Id: S3Origin
+              DomainName: !GetAtt ChatbotBucket.RegionalDomainName
+              S3OriginConfig:
+                OriginAccessIdentity: ""
+              OriginAccessControlId: !Ref OriginAccessControl
+            
+            - Id: LambdaOrigin
+              DomainName: !Sub "${ApiGatewayRestApi}.execute-api.${self:provider.region}.amazonaws.com"
+              OriginPath: /${self:provider.stage}
+              CustomOriginConfig:
+                HTTPPort: 80
+                HTTPSPort: 443
+                OriginProtocolPolicy: https-only
+          
+          DefaultCacheBehavior:
+            TargetOriginId: S3Origin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # Managed-CachingOptimized
+            
+            FunctionAssociations:
+              - EventType: viewer-request
+                FunctionArn: !GetAtt RewriteFunction.FunctionMetadata.FunctionArn
+          
+          CacheBehaviors:
+            - PathPattern: "/ask"
+              TargetOriginId: LambdaOrigin
+              ViewerProtocolPolicy: https-only
+              AllowedMethods:
+                - GET
+                - POST
+                - PUT
+                - DELETE
+                - OPTIONS
+              CachePolicyId: 4135ea3d-c35d-46eb-81d7-edf748dbd394  # Managed-CachingDisabled
+              OriginRequestPolicyId: b689b0a8-53d0-40bc-9f2e-47852d01dc13  # Managed-AllViewer
+              ResponseHeadersPolicyId: ebc47b7a-7b8f-401e-a0d2-b3ffcc6fbe40  # Managed-CORS-with-preflight
+          
+          ViewerCertificate:
+            CloudFrontDefaultCertificate: true
+          
+          CustomErrorResponses:
+            - ErrorCode: 404
+              ResponseCode: 200
+              ResponsePagePath: /index.html
+              ErrorCachingMinTTL: 300
+            - ErrorCode: 403
+              ResponseCode: 200
+              ResponsePagePath: /index.html
+              ErrorCachingMinTTL: 300
+    
+    OriginAccessControl:
+      Type: AWS::CloudFront::OriginAccessControl
+      Properties:
+        OriginAccessControlConfig:
+          Name: ChatbotOAC
+          OriginAccessControlOriginType: s3
+          SigningBehavior: always
+          SigningProtocol: sigv4
+    
+    RewriteFunction:
+      Type: AWS::CloudFront::Function
+      Properties:
+        Name: !Sub "chatbot-rewrite-${self:provider.stage}"
+        AutoPublish: true
+        FunctionCode: |
+          function handler(event) {
+            var request = event.request;
+            var uri = request.uri;
+            
+            // /ask 요청은 Lambda로 라우팅
+            if (uri.startsWith('/ask')) {
+              return request;
+            }
+            
+            // 디렉토리 요청은 index.html로 리라이트
+            if (uri.endsWith('/')) {
+              request.uri += 'index.html';
+            }
+            
+            // 확장자 없는 경로는 HTML 찾기 시도
+            if (!uri.includes('.')) {
+              request.uri += '.html';
+            }
+            
+            return request;
+          }
+        FunctionConfig:
+          Comment: "URL 리라이트 및 라우팅"
+          Runtime: cloudfront-js-1.0
+
+  Outputs:
+    CloudFrontUrl:
+      Description: CloudFront Distribution URL
+      Value: !GetAtt CloudFrontDistribution.DomainName
+    
+    ApiGatewayUrl:
+      Description: API Gateway Endpoint
+      Value: !Sub "https://${ApiGatewayRestApi}.execute-api.${self:provider.region}.amazonaws.com/${self:provider.stage}/ask"
+    
+    S3BucketName:
+      Description: S3 Bucket for frontend
+      Value: !Ref ChatbotBucket
+
+custom:
+  pythonRequirements:
+    dockerizePip: false
