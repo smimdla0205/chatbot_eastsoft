@@ -1,0 +1,435 @@
+# Git Commit History - 프로젝트 처음부터 구축
+
+## 📦 Phase 1: 프로젝트 초기 설정
+
+### Commit 1: 프로젝트 생성
+```
+feat: Next.js 16 프로젝트 초기화
+
+- Next.js 16.0.3 설치 (Turbopack)
+- React 19.2.0
+- Tailwind CSS 4
+- TypeScript 설정
+```
+
+### Commit 2: 프로젝트 구조 생성
+```
+chore: 기본 폴더 구조 생성
+
+- app/ (Next.js App Router)
+- components/ (React 컴포넌트)
+- lib/ (유틸리티)
+- backend/ (Lambda 코드)
+- scripts/ (데이터 처리 스크립트)
+- docs/ (문서)
+```
+
+### Commit 3: Tailwind CSS 설정
+```
+style: Tailwind CSS 4 설정
+
+- postcss.config.mjs
+- @tailwindcss/postcss 플러그인
+- globals.css 기본 스타일
+```
+
+---
+
+## 🎨 Phase 2: UI 컴포넌트 개발
+
+### Commit 4: Button 컴포넌트 생성
+```
+feat: UI Button 컴포넌트 추가
+
+- components/ui/button.tsx
+- class-variance-authority 사용
+- 다양한 variant 지원 (default, outline, ghost)
+```
+
+### Commit 5: ChatGPT 스타일 ChatUI 컴포넌트 생성
+```
+feat: ChatUI 컴포넌트 구현
+
+- ChatGPT 스타일 fullscreen 레이아웃
+- 메시지 버블 (user/ai)
+- 아바타 아이콘 (Bot/User)
+- 입력창 (Enter 키 지원)
+- 로딩 상태 (Spinner)
+- 환영 메시지
+```
+
+### Commit 6: 메인 페이지 단순화
+```
+refactor: app/page.tsx 단순화
+
+- 단일 <ChatUI /> 컴포넌트로 변경
+- 불필요한 레이아웃 코드 제거
+- fullscreen 스타일 적용
+```
+
+---
+
+## ⚙️ Phase 3: 환경 설정
+
+### Commit 7: 환경변수 설정
+```
+config: 환경변수 파일 추가
+
+- .env.local 생성
+- NEXT_PUBLIC_API_ENDPOINT 설정
+- NEXT_PUBLIC_AWS_REGION 설정
+- .gitignore 업데이트
+```
+
+### Commit 8: API 엔드포인트 환경변수화
+```
+refactor: API 엔드포인트를 환경변수로 관리
+
+- ChatUI.tsx에서 process.env 사용
+- 하드코딩 제거
+```
+
+---
+
+## 🔧 Phase 4: AWS Lambda 백엔드
+
+### Commit 9: Lambda 핸들러 기본 구조
+```
+feat: Lambda 핸들러 기본 구조 구현
+
+- backend/lambda/index.py
+- handler() 함수 정의
+- 요청/응답 JSON 파싱
+```
+
+### Commit 10: Bedrock Titan Embeddings 통합
+```
+feat: Bedrock Titan Embeddings 연동
+
+- embed_text_bedrock() 함수
+- amazon.titan-embed-text-v1 모델 사용
+- 1536차원 벡터 생성
+```
+
+### Commit 11: DynamoDB 연동
+```
+feat: DynamoDB 연동 및 벡터 검색
+
+- boto3 DynamoDB 클라이언트
+- search_similar_qa() 함수
+- Cosine Similarity 계산
+- Threshold 0.7 필터링
+```
+
+### Commit 12: Lambda 응답 포맷팅
+```
+feat: Lambda 응답 구조 정의
+
+- format_response() 함수
+- JSON 응답 (question, answer, similarity)
+- 에러 핸들링
+- CORS 헤더 추가
+```
+
+### Commit 13: Lambda 환경변수 설정
+```
+config: Lambda 환경변수 추가
+
+- BEDROCK_REGION
+- BEDROCK_MODEL_ID
+- DYNAMODB_TABLE
+```
+
+---
+
+## 📊 Phase 5: 데이터 처리
+
+### Commit 14: DynamoDB 테이블 스키마 정의
+```
+docs: DynamoDB 테이블 스키마 문서화
+
+- 테이블명: qa-documents
+- 필드: id, question, answer, embedding, created_at, source
+- 인덱스: embedding (벡터 검색용)
+```
+
+### Commit 15: 데이터 임베딩 스크립트 - 기본 구조
+```
+feat: 데이터 임베딩 스크립트 생성
+
+- scripts/insert_perso_qa.py
+- Perso.ai Q&A 데이터 13개 정의
+- Python 딕셔너리 형태
+```
+
+### Commit 16: 데이터 임베딩 스크립트 - Bedrock 연동
+```
+feat: Bedrock을 사용한 임베딩 생성
+
+- get_embedding() 함수
+- boto3 bedrock-runtime 클라이언트
+- JSON 응답 파싱
+- Decimal 타입 변환 (DynamoDB 호환)
+```
+
+### Commit 17: 데이터 임베딩 스크립트 - DynamoDB 삽입
+```
+feat: DynamoDB 데이터 삽입 기능
+
+- insert_qa_data() 함수
+- 기존 테스트 데이터 삭제
+- 13개 Q&A 임베딩 후 저장
+- 진행 상황 표시
+```
+
+---
+
+## 🚀 Phase 6: AWS 인프라 설정
+
+### Commit 18: S3 버킷 생성
+```
+infra: S3 버킷 생성
+
+- 버킷명: qa-chatbot-prod-887078546492
+- 리전: ap-northeast-1
+- 정적 웹사이트 호스팅 활성화
+```
+
+### Commit 19: S3 Public Access 설정
+```
+infra: S3 Public Access 설정
+
+- Public Access Blocking 4개 항목 비활성화
+- Bucket Policy 추가 (PublicReadGetObject)
+```
+
+### Commit 20: CloudFront Distribution 생성
+```
+infra: CloudFront Distribution 생성
+
+- Distribution ID: E2VFW7KIMV95SB
+- Origin: S3 버킷 (Public Access)
+- Default Root Object: index.html
+- Viewer Protocol: Redirect HTTP to HTTPS
+```
+
+### Commit 21: CloudFront Origin 설정 수정
+```
+fix: CloudFront Origin 설정 수정
+
+- OAC 제거
+- Public Access Origin으로 변경
+- 중복 Origin 삭제
+- Behavior 업데이트
+```
+
+### Commit 22: API Gateway 생성
+```
+infra: API Gateway 생성
+
+- REST API 타입
+- 리전: ap-northeast-1
+- API ID: t9886330ae
+- 엔드포인트: /prod/ask (POST)
+```
+
+### Commit 23: API Gateway CORS 설정
+```
+fix: API Gateway CORS 헤더 추가
+
+- OPTIONS 메서드 Integration Response 설정
+- POST 메서드 Integration Response 설정
+- Access-Control-Allow-Origin: *
+- Access-Control-Allow-Methods: POST,OPTIONS
+- Access-Control-Allow-Headers: Content-Type,...
+```
+
+### Commit 24: Lambda 함수 배포
+```
+infra: Lambda 함수 배포
+
+- 함수명: qa-chatbot-bedrock-prod-ask
+- Runtime: Python 3.11
+- Handler: index.handler
+- Timeout: 60초
+- Memory: 1024MB
+```
+
+### Commit 25: Lambda IAM 역할 설정
+```
+infra: Lambda IAM 역할 및 권한 설정
+
+- 역할명: qa-chatbot-bedrock-prod-*-lambdaRole
+- Bedrock InvokeModel 권한
+- DynamoDB Query/Scan 권한
+- CloudWatch Logs 권한
+```
+
+---
+
+## 🐛 Phase 7: 버그 수정
+
+### Commit 26: Lambda 핸들러 경로 수정
+```
+fix: Lambda Handler 경로 수정
+
+- lambda/index.handler → index.handler
+- zip 구조와 일치시킴
+```
+
+### Commit 27: DynamoDB 임베딩 형식 수정
+```
+fix: DynamoDB 임베딩 데이터 타입 수정
+
+- List[N] → List[Decimal]
+- Bedrock 응답과 일치
+```
+
+### Commit 28: Cosine Similarity 계산 수정
+```
+fix: Cosine Similarity 계산 로직 수정
+
+- 벡터 정규화 추가
+- 0으로 나누기 예외 처리
+```
+
+---
+
+## 🎨 Phase 8: UI 개선
+
+### Commit 29: Tailwind CSS v4 클래스 업데이트
+```
+style: Tailwind CSS v4 호환성 수정
+
+- bg-gradient-to-br → bg-linear-to-br
+- flex-shrink-0 → shrink-0
+- break-words → wrap-break-word
+```
+
+### Commit 30: 로딩 상태 UI 개선
+```
+style: 로딩 상태 UI 개선
+
+- Spinner 애니메이션
+- "답변을 생성하고 있습니다..." 텍스트
+- AI 아바타와 함께 표시
+```
+
+### Commit 31: 메시지 스크롤 자동화
+```
+feat: 메시지 자동 스크롤 기능
+
+- useEffect로 messages 변경 감지
+- scrollToBottom() 함수
+- smooth 애니메이션
+```
+
+---
+
+## 📦 Phase 9: 배포 자동화
+
+### Commit 32: 배포 스크립트 추가
+```
+chore: npm 배포 스크립트 추가
+
+- npm run export (Next.js 빌드 + .txt 파일 제거)
+- npm run deploy:s3 (S3 동기화)
+- npm run deploy:cf (CloudFront 캐시 무효화)
+- npm run deploy (전체 배포 파이프라인)
+```
+
+### Commit 33: .txt 파일 필터링
+```
+fix: S3 배포 시 .txt 파일 제외
+
+- --exclude '*.txt' 옵션 추가
+- rm -f ./out/**/*.txt 스크립트
+```
+
+---
+
+## 🧹 Phase 10: 코드 정리
+
+### Commit 34: 불필요한 의존성 제거
+```
+chore: 사용하지 않는 의존성 제거
+
+- framer-motion, sonner, react-hook-form 제거
+- zustand, axios, date-fns 제거
+- lodash-es, zod 제거
+- @types/lodash-es 제거
+```
+
+### Commit 35: 불필요한 파일 삭제
+```
+chore: 사용하지 않는 파일 삭제
+
+- components/AIChatbot.tsx
+- lib/chatbot-api.ts
+- ex.css
+- test/ 폴더
+```
+
+### Commit 36: 배포 문서 정리
+```
+chore: 불필요한 배포 문서 삭제
+
+- DEPLOYMENT_S3_CLOUDFRONT.md
+- DEPLOYMENT_CHECKLIST.md
+- CLOUDFRONT_DEPLOYMENT.md
+- README_AWS.md
+- SYSTEM_OVERVIEW.md
+```
+
+---
+
+## 📚 Phase 11: 문서화
+
+### Commit 37: README.md 작성
+```
+docs: README.md 기본 정보 추가
+
+- CloudFront 배포 주소
+- API Gateway 주소
+- S3 버킷명
+- DynamoDB 테이블 구조
+- Amazon Bedrock 모델 정보
+- 주요 기능 목록
+```
+
+### Commit 38: 이슈 히스토리 문서화
+```
+docs: 개발 중 발견된 이슈 문서화
+
+- docs/ISSUES.txt
+- 10개 이슈 상세 기록
+- 원인 및 해결 방법
+```
+
+### Commit 39: 커밋 히스토리 문서화
+```
+docs: Git 커밋 히스토리 문서화
+
+- docs/COMMIT_HISTORY.txt
+- 39개 커밋 세부 내용
+- Phase별 분류
+```
+
+---
+
+## ✅ 최종 상태
+
+총 커밋: 39개
+- Phase 1 (초기 설정): 3개
+- Phase 2 (UI 개발): 3개
+- Phase 3 (환경 설정): 2개
+- Phase 4 (Lambda 백엔드): 5개
+- Phase 5 (데이터 처리): 4개
+- Phase 6 (AWS 인프라): 8개
+- Phase 7 (버그 수정): 3개
+- Phase 8 (UI 개선): 3개
+- Phase 9 (배포 자동화): 2개
+- Phase 10 (코드 정리): 3개
+- Phase 11 (문서화): 3개
+
+프로젝트 완성 ✅

@@ -1,0 +1,153 @@
+# 프로젝트 개발 중 발견된 이슈 및 해결 과정
+
+## 🐛 Issue #1: CloudFront 404 Not Found 오류
+**증상**: CloudFront 배포 후 "The requested resource does not exist" XML 오류
+**원인**: 
+  - S3 버킷 Public Access Blocking 활성화
+  - Bucket Policy 미설정
+  - CloudFront Origin 설정 오류 (OAC 사용)
+**해결**: 
+  1. S3 Public Access Blocking 4개 항목 모두 비활성화
+  2. Bucket Policy 추가 (Public GetObject 허용)
+  3. CloudFront Origin을 Public Access로 변경
+  4. 중복 Origin 제거 (OAC 사용하던 Origin 삭제)
+  5. Behavior 설정을 새 Origin으로 업데이트
+  6. CloudFront 캐시 무효화 (/*) 실행
+
+---
+
+## 🐛 Issue #2: API 엔드포인트 Placeholder 오류
+**증상**: 브라우저 콘솔에서 "Failed to parse URL from https://[your-cloudfront-domain]/ask"
+**원인**: lib/chatbot-api.ts에 하드코딩된 Placeholder 문자열
+**해결**: API_ENDPOINT를 실제 Lambda URL로 교체
+  - Before: https://[your-cloudfront-domain]/ask
+  - After: https://t9886330ae.execute-api.ap-northeast-1.amazonaws.com/prod/ask
+
+---
+
+## 🐛 Issue #3: 게임 UI vs 과제 요구사항 불일치
+**증상**: 
+  - "뉴스 AI 어시스턴트" 헤더 표시
+  - BlackSwan, PrisonersDilemma, SignalDecoding 게임 타입 참조
+  - 토글 버튼 기반 collapsible 채팅창
+**원인**: 원본 프로젝트가 게임 기반 뉴스 퀴즈 애플리케이션으로 설계됨
+**해결**: 
+  1. 기존 AIChatbot.tsx 제거
+  2. 새로운 ChatUI.tsx 생성 (ChatGPT 스타일 fullscreen 레이아웃)
+  3. app/page.tsx 단순화 (단일 <ChatUI /> 컴포넌트)
+  4. 모든 게임 관련 로직 및 UI 요소 제거
+
+---
+
+## 🐛 Issue #4: DynamoDB 데이터 없음
+**증상**: API 호출 시 "죄송합니다. 데이터셋에 해당 정보가 없습니다." 지속 반환
+**원인**: DynamoDB 테이블에 테스트 데이터만 존재 (test-1), Perso.ai Q&A 데이터 없음
+**해결**: 
+  1. scripts/insert_perso_qa.py 생성
+  2. Perso.ai 관련 13개 Q&A 데이터 준비
+  3. Bedrock Titan으로 각 질문 임베딩 (1536차원)
+  4. DynamoDB에 삽입 (id: perso-1 ~ perso-13)
+  5. 기존 test-1 데이터 삭제
+
+---
+
+## 🐛 Issue #5: Lambda 502 Bad Gateway 오류
+**증상**: API 호출 시 502 상태 코드, CORS 오류 동시 발생
+**원인**: Lambda Handler 경로 불일치
+  - 설정: lambda/index.handler
+  - 실제 zip 구조: index.py (루트)
+**Lambda 로그**: "Unable to import module 'lambda/index': No module named 'lambda'"
+**해결**: 
+  1. Lambda 설정에서 Handler를 index.handler로 변경
+  2. Lambda 함수 재배포 (PowerShell Compress-Archive 사용)
+
+---
+
+## 🐛 Issue #6: API Gateway CORS 오류
+**증상**: 
+  - "Access to fetch from origin 'http://localhost:3000' has been blocked by CORS policy"
+  - "No 'Access-Control-Allow-Origin' header is present"
+**원인**: API Gateway에 CORS 헤더 미설정
+**해결**: 
+  1. OPTIONS 메서드 Integration Response에 CORS 헤더 추가:
+     - Access-Control-Allow-Headers: 'Content-Type,X-Amz-Date,Authorization,X-Api-Key'
+     - Access-Control-Allow-Methods: 'POST,OPTIONS'
+     - Access-Control-Allow-Origin: '*'
+  2. POST 메서드 Integration Response에 CORS 헤더 추가:
+     - Access-Control-Allow-Origin: '*'
+  3. API Gateway 재배포 (stage: prod)
+
+---
+
+## 🐛 Issue #7: Python 실행 파일 없음
+**증상**: bash에서 "python: command not found" / "python3: command not found"
+**원인**: Windows 환경에서 Python Launcher만 설치됨 (python/python3 명령어 미등록)
+**해결**: py 명령어 사용 (Windows Python Launcher)
+  - python scripts/insert_perso_qa.py → py scripts/insert_perso_qa.py
+
+---
+
+## 🐛 Issue #8: Tailwind CSS v4 호환성 경고
+**증상**: ESLint/TypeScript에서 Tailwind 클래스 경고 6개 발생
+**원인**: Tailwind CSS v3 → v4 업그레이드 시 클래스명 변경
+**해결**: 
+  - bg-gradient-to-br → bg-linear-to-br (3곳)
+  - flex-shrink-0 → shrink-0 (2곳)
+  - break-words → wrap-break-word (1곳)
+
+---
+
+## 🐛 Issue #9: 불필요한 의존성 및 파일
+**증상**: 
+  - package.json에 사용하지 않는 라이브러리 8개
+  - 프로젝트에 사용하지 않는 파일들 존재
+**해결**: 
+  1. 의존성 제거:
+     - framer-motion, sonner, react-hook-form, zustand
+     - axios, date-fns, lodash-es, zod
+     - @types/lodash-es (devDependencies)
+  2. 파일 제거:
+     - components/AIChatbot.tsx (손상됨, 미사용)
+     - lib/chatbot-api.ts (ChatUI가 직접 fetch 사용)
+     - ex.css
+     - test/ 폴더 전체
+     - DEPLOYMENT_*.md, README_AWS.md, SYSTEM_OVERVIEW.md (5개 문서)
+
+---
+
+## 🐛 Issue #10: 환경변수 하드코딩
+**증상**: 
+  - ChatUI.tsx에 API 엔드포인트 하드코딩
+  - .env 파일 누락
+**해결**: 
+  1. .env.local 생성 (NEXT_PUBLIC_API_ENDPOINT 등록)
+  2. ChatUI.tsx에서 process.env.NEXT_PUBLIC_API_ENDPOINT 사용
+  3. .gitignore에 환경변수 파일 추가
+
+---
+
+## 📊 이슈 통계
+
+총 이슈: 10개
+- 배포 관련: 4개 (#1, #5, #6, #9)
+- 데이터/백엔드: 2개 (#4, #7)
+- UI/프론트엔드: 2개 (#3, #8)
+- 설정/환경: 2개 (#2, #10)
+
+심각도:
+- Critical: 4개 (#1, #4, #5, #6)
+- High: 2개 (#3, #7)
+- Medium: 3개 (#2, #8, #10)
+- Low: 1개 (#9)
+
+---
+
+## ✅ 최종 상태
+
+모든 이슈 해결 완료
+- CloudFront 정상 작동: https://dwqkuear27d2d.cloudfront.net
+- Lambda API 정상 응답
+- DynamoDB 13개 Q&A 데이터 저장
+- CORS 설정 완료
+- UI ChatGPT 스타일 완성
+- 코드 정리 완료
