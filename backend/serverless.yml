@@ -1,0 +1,41 @@
+service: qa-chatbot-bedrock
+
+provider:
+  name: aws
+  runtime: python3.11
+  region: ap-northeast-1
+  stage: prod
+  environment:
+    BEDROCK_REGION: ap-northeast-1
+    BEDROCK_MODEL_ID: anthropic.claude-3-sonnet-20240229-v1:0
+    DYNAMODB_TABLE: qa-documents
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - logs:CreateLogGroup
+        - logs:CreateLogStream
+        - logs:PutLogEvents
+        - bedrock:InvokeModel
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:Query
+      Resource: "*"
+
+functions:
+  ask:
+    handler: lambda/index.handler
+    timeout: 60
+    memorySize: 1024
+    description: "Q&A Bedrock 챗봇 - DynamoDB 통합"
+    events:
+      - http:
+          path: ask
+          method: post
+          cors: true
+
+plugins:
+  - serverless-python-requirements
+
+custom:
+  pythonRequirements:
+    dockerizePip: true

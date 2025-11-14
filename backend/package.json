@@ -1,0 +1,17 @@
+{
+  "name": "vectordb-qa-chatbot-lambda",
+  "version": "1.0.0",
+  "description": "AWS Lambda Backend - Vector DB Q&A Chatbot",
+  "type": "module",
+  "scripts": {
+    "deploy": "serverless deploy",
+    "deploy:prod": "serverless deploy --stage prod",
+    "remove": "serverless remove",
+    "logs": "serverless logs -f chat -t",
+    "logs:prod": "serverless logs -f chat -t --stage prod"
+  },
+  "devDependencies": {
+    "serverless": "^3.38.0",
+    "serverless-python-requirements": "^6.0.0"
+  }
+}
