@@ -5,8 +5,8 @@ import type { Metadata } from "next"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "뉴스 AI 어시스턴트",
-  description: "게임 기반 뉴스 이해력 퀴즈",
+title: "Vector DB 기반 Q&A 챗봇",
+description: "답변 반환하는 서버리스 AI 챗봇"
 }
 
 export default function RootLayout({
